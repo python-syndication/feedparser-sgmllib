@@ -107,7 +107,6 @@ class SGMLParserTestCase(unittest.TestCase):
                 parser.feed(s)
             parser.close()
         except:
-            #self.events = parser.events
             raise
         return parser.get_events()
 
@@ -115,8 +114,6 @@ class SGMLParserTestCase(unittest.TestCase):
         try:
             events = self.get_events(source)
         except:
-            #import sys
-            #print >>sys.stderr, pprint.pformat(self.events)
             raise
         if events != expected_events:
             self.fail("received events did not match expected events\n"
@@ -430,11 +427,3 @@ DOCTYPE html PUBLIC '-//W3C//DTD HTML 4.01//EN'
         self.check_parse_error("<a foo='>'")
         self.check_parse_error("<a foo='>")
         self.check_parse_error("<a foo=>")
-
-
-def test_main():
-    test_support.run_unittest(SGMLParserTestCase)
-
-
-if __name__ == "__main__":
-    test_main()
