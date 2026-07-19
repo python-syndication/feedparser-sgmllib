@@ -9,11 +9,6 @@
 # not supported at all.
 
 
-from warnings import warnpy3k
-warnpy3k("the sgmllib module has been removed in Python 3.0",
-         stacklevel=2)
-del warnpy3k
-
 import _markupbase
 import re
 
@@ -171,7 +166,10 @@ class SGMLParser(_markupbase.ParserBase):
                     # This is some sort of declaration; in "HTML as
                     # deployed," this should only be the document type
                     # declaration ("<!DOCTYPE html...>").
-                    k = self.parse_declaration(i)
+                    try:
+                        k = self.parse_declaration(i)
+                    except AssertionError as error:
+                        raise SGMLParseError(error.args)
                     if k < 0: break
                     i = k
                     continue
