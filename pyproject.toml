@@ -1,0 +1,57 @@
+[project]
+name = "feedparser-sgmllib"
+description = "sgmllib from Python 2.7. For feedparser use only."
+version = "1.0.0"
+readme = "README.rst"
+requires-python = ">=3.10"
+license = "PSF-2.0"
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+
+# poetry
+# ------
+
+[tool.poetry]
+packages = [
+    { include = "feedparser", from = "src" }
+]
+
+
+# coverage
+# --------
+
+[tool.coverage.run]
+relative_files = true
+parallel = true
+branch = true
+source = [
+    "feedparser.sgmllib",
+    "tests",
+]
+
+[tool.coverage.paths]
+source = [
+    "src",
+    "*/site-packages",
+]
+
+[tool.coverage.report]
+skip_covered = true
+fail_under = 75
+
+
+# pytest
+# ------
+
+[tool.pytest]
+addopts = [
+    "--color=yes",
+]
+filterwarnings = [
+    "error",
+]
+strict = true
+

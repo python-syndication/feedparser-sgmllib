@@ -1,0 +1,5 @@
+dist/
+*.pyc
+.coverage*
+htmlcov/
+.tox/
