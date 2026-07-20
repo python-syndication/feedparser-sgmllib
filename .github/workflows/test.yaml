@@ -1,0 +1,68 @@
+name: '🧪 Test'
+
+on:
+  pull_request: null
+
+permissions: {}
+concurrency:
+  group: "${{ github.workflow }}-${{ github.ref }}"
+  cancel-in-progress: true
+
+env:
+  UV_VERSION: '0.11.29'
+
+jobs:
+  test:
+    name: 'Test'
+    runs-on: 'ubuntu-24.04'
+    steps:
+      - name: 'Checkout'
+        uses: 'actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0' # v7.0.0
+        with:
+          persist-credentials: 'false'
+
+      - name: 'Setup Python'
+        uses: 'actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1' # v6.3.0
+        with:
+          allow-prereleases: 'true'
+          # Pre-release Python versions are listed first
+          # so that they are not used as the default 'python' command.
+          python-version: |
+            3.15
+
+            3.10
+            3.11
+            3.12
+            3.13
+            3.14
+
+      - name: 'Setup uv'
+        uses: 'astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39' # v8.2.0
+        with:
+          version: "${{ env.UV_VERSION }}"
+          enable-cache: 'true'
+
+      - name: 'Run the test suite'
+        env:
+          TOX_SKIP_ENV: 'coverage-html'
+        run: |
+          uv tool run --with=tox-uv --with=tox-gh tox --colored=yes
+
+  security:
+    name: 'Security'
+    runs-on: 'ubuntu-slim'
+    steps:
+      - name: 'Checkout'
+        uses: 'actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0' # v7.0.0
+        with:
+          persist-credentials: 'false'
+
+      - name: 'Setup uv'
+        uses: 'astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39' # v8.2.0
+        with:
+          version: "${{ env.UV_VERSION }}"
+          enable-cache: 'false'
+
+      - name: 'Run zizmor'
+        run: |
+          uv tool run zizmor --persona=pedantic .github/workflows/*
