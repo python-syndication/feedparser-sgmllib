@@ -16,4 +16,3 @@ Copyright © 1991-1995 Stichting Mathematisch Centrum. All rights reserved.
 -------
 
 See :doc:`license` for complete license and permissions information.
-
