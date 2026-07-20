@@ -3,10 +3,6 @@
 
 .. module:: sgmllib
    :synopsis: Only as much of an SGML parser as needed to parse HTML.
-   :deprecated:
-
-.. deprecated:: 2.6
-    The :mod:`sgmllib` module has been removed in Python 3.
 
 .. index:: single: SGML
 
@@ -14,8 +10,8 @@ This module defines a class :class:`SGMLParser` which serves as the basis for
 parsing text files formatted in SGML (Standard Generalized Mark-up Language).
 In fact, it does not provide a full SGML parser --- it only parses SGML insofar
 as it is used by HTML, and the module only exists as a base for the
-:mod:`htmllib` module.  Another HTML parser which supports XHTML and offers a
-somewhat different interface is available in the :mod:`HTMLParser` module.
+``htmllib`` module.  Another HTML parser which supports XHTML and offers a
+somewhat different interface is available in the ``HTMLParser`` module.
 
 
 .. class:: SGMLParser()
@@ -42,7 +38,6 @@ A single exception is defined as well:
    Exception raised by the :class:`SGMLParser` class when it encounters an error
    while parsing.
 
-   .. versionadded:: 2.1
 
 :class:`SGMLParser` instances have the following methods:
 
@@ -108,9 +103,6 @@ A single exception is defined as well:
    base implementation simply calls *method* with *attributes* as the only
    argument.
 
-   .. versionadded:: 2.5
-      Handling of entity and character references within attribute values.
-
 
 .. method:: SGMLParser.handle_endtag(tag, method)
 
@@ -135,9 +127,6 @@ A single exception is defined as well:
    a string.  If that method returns a string, it is passed to :meth:`handle_data`,
    otherwise ``unknown_charref(ref)`` is called to handle the error.
 
-   .. versionchanged:: 2.5
-      Use :meth:`convert_charref` instead of hard-coding the conversion.
-
 
 .. method:: SGMLParser.convert_charref(ref)
 
@@ -148,15 +137,11 @@ A single exception is defined as well:
    method returns ``None``.  This method is called by the default
    :meth:`handle_charref` implementation and by the attribute value parser.
 
-   .. versionadded:: 2.5
-
 
 .. method:: SGMLParser.convert_codepoint(codepoint)
 
    Convert a code point to a :class:`str` value.  Encodings can be handled here if
    appropriate, though the rest of :mod:`sgmllib` is oblivious on this matter.
-
-   .. versionadded:: 2.5
 
 
 .. method:: SGMLParser.handle_entityref(ref)
@@ -168,9 +153,6 @@ A single exception is defined as well:
    method ``unknown_entityref(ref)``. The default :attr:`entitydefs` defines
    translations for ``&amp;``, ``&apos;``, ``&gt;``, ``&lt;``, and ``&quot;``.
 
-   .. versionchanged:: 2.5
-      Use :meth:`convert_entityref` instead of hard-coding the conversion.
-
 
 .. method:: SGMLParser.convert_entityref(ref)
 
@@ -181,8 +163,6 @@ A single exception is defined as well:
    translations.  If no translation is available for *ref*, this method returns
    ``None``.  This method is called by the default :meth:`handle_entityref`
    implementation and by the attribute value parser.
-
-   .. versionadded:: 2.5
 
 
 .. method:: SGMLParser.handle_comment(comment)
@@ -242,7 +222,6 @@ method names must be in lower case:
 
 
 .. method:: SGMLParser.start_tag(attributes)
-   :noindex:
 
    This method is called to process an opening tag *tag*.  It has preference over
    :meth:`do_tag`.  The *attributes* argument has the same meaning as described for
@@ -250,7 +229,6 @@ method names must be in lower case:
 
 
 .. method:: SGMLParser.do_tag(attributes)
-   :noindex:
 
    This method is called to process an opening tag *tag*  for which no
    :meth:`start_tag` method is defined.   The *attributes* argument has the same
@@ -258,15 +236,23 @@ method names must be in lower case:
 
 
 .. method:: SGMLParser.end_tag()
-   :noindex:
 
    This method is called to process a closing tag *tag*.
 
-Note that the parser maintains a stack of open elements for which no end tag has
-been found yet.  Only tags processed by :meth:`start_tag` are pushed on this
-stack.  Definition of an :meth:`end_tag` method is optional for these tags.  For
-tags processed by :meth:`do_tag` or by :meth:`unknown_tag`, no :meth:`end_tag`
-method must be defined; if defined, it will not be used.  If both
-:meth:`start_tag` and :meth:`do_tag` methods exist for a tag, the
-:meth:`start_tag` method takes precedence.
 
+Note that the parser maintains a stack of open elements for which no end tag has
+been found yet.  Only tags processed by :meth:`SGMLParser.start_tag` are pushed on this
+stack.  Definition of an :meth:`SGMLParser.end_tag` method is optional for these tags.  For
+tags processed by :meth:`SGMLParser.do_tag` or by :meth:`SGMLParser.unknown_starttag`, no :meth:`SGMLParser.end_tag`
+method must be defined; if defined, it will not be used.  If both
+:meth:`SGMLParser.start_tag` and :meth:`SGMLParser.do_tag` methods exist for a tag, the
+:meth:`SGMLParser.start_tag` method takes precedence.
+
+
+:class:`SGMLParser` instances have the following attributes:
+
+
+..  attribute:: SGMLParser.entitydefs
+
+    The default :attr:`entitydefs` defines
+    translations for ``&amp;``, ``&apos;``, ``&gt;``, ``&lt;``, and ``&quot;``.
