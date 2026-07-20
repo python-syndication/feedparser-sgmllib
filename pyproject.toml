@@ -48,6 +48,23 @@ skip_covered = true
 fail_under = 75
 
 
+# flake8
+# ------
+
+[tool.flake8]
+max-line-length = 80
+extend-select = ["B950"]
+extend-ignore = ["E203", "E501", "E701"]
+
+
+# isort
+# -----
+
+[tool.isort]
+profile = "black"
+force_single_line = true
+
+
 # pytest
 # ------
 
@@ -59,4 +76,3 @@ filterwarnings = [
     "error",
 ]
 strict = true
-
