@@ -1,0 +1,68 @@
+name: '📦 Publish'
+
+on:
+  push:
+    branches:
+      - 'releases'
+
+permissions: {}
+
+concurrency:
+  group: "${{ github.workflow }}-${{ github.ref }}"
+  cancel-in-progress: true
+
+env:
+  PACKAGES_PATH: 'dist'
+
+jobs:
+  build:
+    outputs:
+      artifact-id: "${{ steps.upload-packages.outputs.artifact-id }}"
+
+    name: 'Build'
+    runs-on: 'ubuntu-24.04'
+    steps:
+      - name: 'Checkout'
+        uses: 'actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0' # v7.0.0
+        with:
+          persist-credentials: 'false'
+
+      - name: 'Setup Python'
+        uses: 'actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1' # v6.3.0
+        with:
+          python-version: '3.14'
+
+      - name: 'Build'
+        run: |
+          python -m venv .venv
+          source .venv/bin/activate
+          python -m pip install build
+          python -m build --outdir dist/
+
+      - name: 'Upload packages'
+        id: 'upload-packages'
+        uses: 'actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a' # v7.0.1
+        with:
+          path: "${{ env.PACKAGES_PATH }}"
+
+
+  publish:
+    needs:
+      - 'build'
+    environment: 'PyPI'
+    permissions:
+      id-token: 'write' # Necessary for uploading to PyPI.
+
+    name: 'Publish'
+    runs-on: 'ubuntu-24.04'
+    steps:
+      - name: 'Download the built packages'
+        uses: 'actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c' # v8.0.1
+        with:
+          artifact-ids: "${{ needs.build.outputs.artifact-id }}"
+          path: "${{ env.PACKAGES_PATH }}"
+
+      - name: 'Publish package distributions to PyPI'
+        uses: 'pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b' # v1.14.0
+        with:
+          packages-dir: "${{ env.PACKAGES_PATH }}"
