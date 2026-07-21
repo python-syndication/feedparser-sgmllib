@@ -6,7 +6,6 @@ name = "dependencies"
 requires-python = ">=3.10"
 dependencies = [
     "coverage[toml]",
-    "pyfakefs",
     "pytest",
     "pytest-randomly",
 ]

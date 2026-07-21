@@ -100,11 +100,11 @@ class SGMLParser(_markupbase.ParserBase):
         """
 
         self.rawdata = self.rawdata + data
-        self.goahead(0)
+        self.goahead(False)
 
     def close(self) -> None:
         """Handle the remaining data."""
-        self.goahead(1)
+        self.goahead(True)
 
     def error(self, message: str) -> t.NoReturn:
         raise SGMLParseError(message)
@@ -112,7 +112,7 @@ class SGMLParser(_markupbase.ParserBase):
     # Internal -- handle data as far as reasonable.  May leave state
     # and data to be processed by a subsequent call.  If 'end' is
     # true, force handling all data as if followed by EOF marker.
-    def goahead(self, end: int) -> None:
+    def goahead(self, end: bool) -> None:
         rawdata = self.rawdata
         i = 0
         n = len(rawdata)
