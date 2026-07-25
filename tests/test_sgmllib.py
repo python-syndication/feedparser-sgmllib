@@ -404,6 +404,37 @@ def test_numeric_character_references_negative(text):
     assert sgmllib.charref.search(text) is None
 
 
+@pytest.mark.parametrize(
+    "text",
+    (
+        pytest.param("aA0-_.9Zz", id="bare-lowercase-first"),
+        pytest.param("Aa0-_.9zZ", id="bare-uppercase-first"),
+        pytest.param("AazZ:0Aa-_.zZ9", id="xml-namespace-uppercase-first"),
+        pytest.param("aAZz:0Aa-_.zZ9", id="xml-namespace-lowercase-first"),
+    ),
+)
+def test_tagfind_positive(text):
+    """Verify that tags can be matched."""
+
+    assert sgmllib.tagfind.match(text).string == text
+    assert sgmllib.tagfind.search(text).string == text
+
+
+@pytest.mark.parametrize(
+    "text",
+    (
+        pytest.param("0az", id="leading-digit"),
+        pytest.param("a=z", id="symbol"),
+        pytest.param("0az:az", id="namespaced-leading-digit"),
+    ),
+)
+def test_tagfind_negative(text):
+    """Verify invalid tags are rejected."""
+
+    assert sgmllib.tagfind.match(text) != text
+    assert sgmllib.tagfind.search(text) != text
+
+
 # XXX These tests have been disabled by prefixing their names with
 # an underscore.  The first two exercise outstanding bugs in the
 # sgmllib module, and the third exhibits questionable behavior
