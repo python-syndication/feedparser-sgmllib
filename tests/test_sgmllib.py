@@ -371,6 +371,39 @@ def test_only_decode_ascii(event_collector):
     )
 
 
+@pytest.mark.parametrize(
+    "text",
+    (
+        pytest.param("&#09;", id="decimal"),
+        pytest.param("&#x0af9;", id="hex-lowercase-digits"),
+        pytest.param("&#x0AF9;", id="hex-uppercase-digits"),
+        pytest.param("&#x0af9;", id="hex-lowercase-x"),
+        pytest.param("&#X0af9;", id="hex-uppercase-X"),
+    ),
+)
+def test_numeric_character_references_positive(text):
+    """Verify numeric character references can be matched."""
+
+    assert sgmllib.charref.match(text).string == text
+    assert sgmllib.charref.search(text).string == text
+
+
+@pytest.mark.parametrize(
+    "text",
+    (
+        pytest.param("&#0A;", id="decimal-only-digits-matched"),
+        pytest.param("&#0४;", id="decimal-only-ascii-matched"),
+        pytest.param("&#x0G;", id="hexadecimal-only-hex-digits-matched"),
+        pytest.param("&#x0४;", id="hexadecimal-only-ascii-matched"),
+    ),
+)
+def test_numeric_character_references_negative(text):
+    """Verify invalid numeric character references are rejected."""
+
+    assert sgmllib.charref.match(text) is None
+    assert sgmllib.charref.search(text) is None
+
+
 # XXX These tests have been disabled by prefixing their names with
 # an underscore.  The first two exercise outstanding bugs in the
 # sgmllib module, and the third exhibits questionable behavior

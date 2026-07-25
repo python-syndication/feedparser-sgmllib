@@ -26,7 +26,7 @@ incomplete = re.compile(
 )
 
 entityref = re.compile("&([a-zA-Z][-.a-zA-Z0-9]*)[^a-zA-Z0-9]")
-charref = re.compile("&#([0-9]+)[^0-9]")
+charref = re.compile("&#([0-9]+|[xX][0-9a-fA-F]+);")
 
 starttagopen = re.compile("<[>a-zA-Z]")
 shorttagopen = re.compile("<[a-zA-Z][-.a-zA-Z0-9]*/")
