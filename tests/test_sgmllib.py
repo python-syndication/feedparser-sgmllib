@@ -435,6 +435,26 @@ def test_tagfind_negative(text):
     assert sgmllib.tagfind.search(text) != text
 
 
+def test_attrfind_trailing_dollar_sign():
+    """
+    Verify that a trailing dollar sign can be found in an attribute.
+
+    Circa August 2011, Blogger wrote image tags like this:
+
+        <img border="0" i$="true" src="http://site.invalid/img.jpg" />
+
+    sgmllib did not recognize the "i$" attribute name,
+    and this caused the "src" attribute to be lost.
+    Allowing trailing dollar signs resolved this issue.
+
+    NOTE: The dollar sign is not a part of the attribute name.
+    """
+
+    text = 'i$="true"'
+    assert sgmllib.attrfind.match(text).groups() == ("i", '="true"', '"true"')
+    assert sgmllib.attrfind.search(text).groups() == ("i", '="true"', '"true"')
+
+
 # XXX These tests have been disabled by prefixing their names with
 # an underscore.  The first two exercise outstanding bugs in the
 # sgmllib module, and the third exhibits questionable behavior
