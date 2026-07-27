@@ -2,16 +2,14 @@
 =====================================
 
 .. module:: sgmllib
-   :synopsis: Only as much of an SGML parser as needed to parse HTML.
+   :synopsis: Support parsing XML feeds and HTML.
 
 .. index:: single: SGML
 
 This module defines a class :class:`SGMLParser` which serves as the basis for
 parsing text files formatted in SGML (Standard Generalized Mark-up Language).
 In fact, it does not provide a full SGML parser --- it only parses SGML insofar
-as it is used by HTML, and the module only exists as a base for the
-``htmllib`` module.  Another HTML parser which supports XHTML and offers a
-somewhat different interface is available in the ``HTMLParser`` module.
+as it is used by XML feeds and HTML.
 
 
 .. class:: SGMLParser()
