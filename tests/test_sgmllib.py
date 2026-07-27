@@ -371,6 +371,90 @@ def test_only_decode_ascii(event_collector):
     )
 
 
+@pytest.mark.parametrize(
+    "text",
+    (
+        pytest.param("&#09;", id="decimal"),
+        pytest.param("&#x0af9;", id="hex-lowercase-digits"),
+        pytest.param("&#x0AF9;", id="hex-uppercase-digits"),
+        pytest.param("&#x0af9;", id="hex-lowercase-x"),
+        pytest.param("&#X0af9;", id="hex-uppercase-X"),
+    ),
+)
+def test_numeric_character_references_positive(text):
+    """Verify numeric character references can be matched."""
+
+    assert sgmllib.charref.match(text).string == text
+    assert sgmllib.charref.search(text).string == text
+
+
+@pytest.mark.parametrize(
+    "text",
+    (
+        pytest.param("&#0A;", id="decimal-only-digits-matched"),
+        pytest.param("&#0४;", id="decimal-only-ascii-matched"),
+        pytest.param("&#x0G;", id="hexadecimal-only-hex-digits-matched"),
+        pytest.param("&#x0४;", id="hexadecimal-only-ascii-matched"),
+    ),
+)
+def test_numeric_character_references_negative(text):
+    """Verify invalid numeric character references are rejected."""
+
+    assert sgmllib.charref.match(text) is None
+    assert sgmllib.charref.search(text) is None
+
+
+@pytest.mark.parametrize(
+    "text",
+    (
+        pytest.param("aA0-_.9Zz", id="bare-lowercase-first"),
+        pytest.param("Aa0-_.9zZ", id="bare-uppercase-first"),
+        pytest.param("AazZ:0Aa-_.zZ9", id="xml-namespace-uppercase-first"),
+        pytest.param("aAZz:0Aa-_.zZ9", id="xml-namespace-lowercase-first"),
+    ),
+)
+def test_tagfind_positive(text):
+    """Verify that tags can be matched."""
+
+    assert sgmllib.tagfind.match(text).string == text
+    assert sgmllib.tagfind.search(text).string == text
+
+
+@pytest.mark.parametrize(
+    "text",
+    (
+        pytest.param("0az", id="leading-digit"),
+        pytest.param("a=z", id="symbol"),
+        pytest.param("0az:az", id="namespaced-leading-digit"),
+    ),
+)
+def test_tagfind_negative(text):
+    """Verify invalid tags are rejected."""
+
+    assert sgmllib.tagfind.match(text) != text
+    assert sgmllib.tagfind.search(text) != text
+
+
+def test_attrfind_trailing_dollar_sign():
+    """
+    Verify that a trailing dollar sign can be found in an attribute.
+
+    Circa August 2011, Blogger wrote image tags like this:
+
+        <img border="0" i$="true" src="http://site.invalid/img.jpg" />
+
+    sgmllib did not recognize the "i$" attribute name,
+    and this caused the "src" attribute to be lost.
+    Allowing trailing dollar signs resolved this issue.
+
+    NOTE: The dollar sign is not a part of the attribute name.
+    """
+
+    text = 'i$="true"'
+    assert sgmllib.attrfind.match(text).groups() == ("i", '="true"', '"true"')
+    assert sgmllib.attrfind.search(text).groups() == ("i", '="true"', '"true"')
+
+
 # XXX These tests have been disabled by prefixing their names with
 # an underscore.  The first two exercise outstanding bugs in the
 # sgmllib module, and the third exhibits questionable behavior

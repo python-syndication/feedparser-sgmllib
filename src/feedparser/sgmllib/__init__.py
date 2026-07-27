@@ -26,16 +26,16 @@ incomplete = re.compile(
 )
 
 entityref = re.compile("&([a-zA-Z][-.a-zA-Z0-9]*)[^a-zA-Z0-9]")
-charref = re.compile("&#([0-9]+)[^0-9]")
+charref = re.compile("&#([0-9]+|[xX][0-9a-fA-F]+);")
 
 starttagopen = re.compile("<[>a-zA-Z]")
 shorttagopen = re.compile("<[a-zA-Z][-.a-zA-Z0-9]*/")
 shorttag = re.compile("<([a-zA-Z][-.a-zA-Z0-9]*)/([^/]*)/")
 piclose = re.compile(">")
 endbracket = re.compile("[<>]")
-tagfind = re.compile("[a-zA-Z][-_.a-zA-Z0-9]*")
+tagfind = re.compile("[a-zA-Z][-_.:a-zA-Z0-9]*")
 attrfind = re.compile(
-    r"\s*([a-zA-Z_][-:.a-zA-Z_0-9]*)(\s*=\s*"
+    r"\s*([a-zA-Z_][-:.a-zA-Z_0-9]*)[$]?(\s*=\s*"
     r'(\'[^\']*\'|"[^"]*"|[][\-a-zA-Z0-9./,:;+*%?!&$\(\)_#=~\'"@]*))?'
 )
 
