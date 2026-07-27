@@ -2,6 +2,9 @@
 name = "feedparser-sgmllib"
 description = "sgmllib from Python 2.7. For feedparser use only."
 version = "1.0.0"
+maintainers = [
+    { name = "Kurt McKee", email = "contactme@kurtmckee.org" },
+]
 readme = "README.rst"
 requires-python = ">=3.10"
 license = "PSF-2.0"
