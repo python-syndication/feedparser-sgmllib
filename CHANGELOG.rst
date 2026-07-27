@@ -1,17 +1,42 @@
 CHANGELOG
 #########
 
-1.0.0 - Unreleased
+1.0.0 - 2026-07-27
 ==================
 
-*   Import sgmllib from Python 2.7.18.
-*   Add project infrastructure to support development.
+Initial release
+---------------
 
-Changes
+*   Import sgmllib from Python 2.7.18.
+*   Update the code to work with Python 3.
+*   Move ``sgmllib`` to be a namespace package: ``feedparser.sgmllib``.
+
+Fixed
+-----
+
+*   Convert an ``AssertionError`` from ``_markupbase`` to an ``SGMLParseError``.
+
+Changed
 -------
+
+*   Add type annotations.
+*   Convert the ``SGMLParser.__init__()`` *verbose* parameter to a bool.
+*   Convert the ``SGMLParser.goahead()`` *end* parameter to a bool.
 
 *The following changes were incorporated from feedparser:*
 
 *   Support trailing dollar signs in attribute names.
 *   Support tags with namespace prefixes.
 *   Support hexadecimal character references.
+
+Documentation
+-------------
+
+*   Publish the original sgmllib documentation to Read the Docs.
+
+Infrastructure and maintenance
+------------------------------
+
+*   Add CI.
+*   Add pre-commit hooks.
+*   Update the test suite.
