@@ -13,10 +13,14 @@
         "Supports a new feature" or "A new feature is supported".
 
     4.  If your change is associated with an issue on GitHub,
-        list the issue number(s) in parentheses, separated by
-        commas. For example:
+        list the issue number(s) after the first sentence.
+        For example:
 
-            Support a new feature. (#10, #20)
+            Support a new feature. (:issue:`10, 20`)
+
+        It's also possible to reference other repositories' issues:
+
+            Fix a bug. (:issue:`group/repo#10`)
 
 {% for category in config.categories %}
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

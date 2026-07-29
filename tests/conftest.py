@@ -2,7 +2,7 @@ import re
 
 import pytest
 
-import feedparser.sgmllib as sgmllib
+import feedparser_sgmllib as sgmllib
 
 
 @pytest.fixture

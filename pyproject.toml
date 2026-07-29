@@ -19,15 +19,6 @@ requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 
-# poetry
-# ------
-
-[tool.poetry]
-packages = [
-    { include = "feedparser", from = "src" }
-]
-
-
 # coverage
 # --------
 
@@ -36,7 +27,7 @@ relative_files = true
 parallel = true
 branch = true
 source = [
-    "feedparser.sgmllib",
+    "feedparser_sgmllib",
     "tests",
 ]
 
@@ -72,7 +63,7 @@ force_single_line = true
 # ----
 
 [tool.mypy]
-packages = "feedparser.sgmllib"
+packages = "feedparser_sgmllib"
 strict = true
 sqlite_cache = true
 enable_error_code = [

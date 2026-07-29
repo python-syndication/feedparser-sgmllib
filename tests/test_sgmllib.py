@@ -3,7 +3,7 @@ import pathlib
 
 import pytest
 
-import feedparser.sgmllib as sgmllib
+import feedparser_sgmllib as sgmllib
 
 
 def test_doctype_decl_internal(event_collector):
