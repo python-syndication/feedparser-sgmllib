@@ -22,6 +22,15 @@ version = release = info_["project"]["version"]
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = "sphinx"
 
+extensions = [
+    "sphinx_issues",
+]
+
+# `sphinx_issues` configuration
+# -----------------------------
+
+issues_github_path = "python-syndication/feedparser-sgmllib"
+
 
 # HTML theme configuration
 # ------------------------

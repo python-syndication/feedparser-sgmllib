@@ -6,4 +6,5 @@ name = "dependencies"
 requires-python = ">=3.10"
 dependencies = [
     "sphinx",
+    "sphinx_issues",
 ]
