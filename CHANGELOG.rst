@@ -20,6 +20,16 @@ Please see the fragment files in the `changelog.d directory`_.
 
 ..  scriv-insert-here
 
+.. _changelog-2.0.1:
+
+2.0.1 - 2026-07-30
+==================
+
+Changed
+-------
+
+*   Include documentation, tests, and supporting files in the source distribution. (:issue:`12`)
+
 .. _changelog-2.0.0:
 
 2.0.0 - 2026-07-30
