@@ -20,6 +20,33 @@ Please see the fragment files in the `changelog.d directory`_.
 
 ..  scriv-insert-here
 
+.. _changelog-2.0.0:
+
+2.0.0 - 2026-07-30
+==================
+
+Breaking changes
+----------------
+
+*   Switch from a namespace package to a regular package. (:issue:`kurtmckee/feedparser#585`)
+
+    The namespace package caused issues in the feedparser dev environment
+    due to conflicts with editable installs of feedparser.
+    It also adversely affected deployments for users
+    due to separated installs between system and venv environments.
+
+    The new package name is ``feedparser_sgmllib``.
+
+Documentation
+-------------
+
+*   Use the ``sphinx-issues`` plugin to link to issues and PRs.
+
+Development
+-----------
+
+*   Use scriv to manage the CHANGELOG.
+
 .. _changelog-1.0.0:
 
 1.0.0 - 2026-07-27
