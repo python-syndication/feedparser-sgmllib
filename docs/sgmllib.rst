@@ -1,7 +1,7 @@
-:mod:`sgmllib` --- Simple SGML parser
-=====================================
+API documentation
+=================
 
-.. module:: sgmllib
+.. module:: feedparser_sgmllib
    :synopsis: Support parsing XML feeds and HTML.
 
 .. index:: single: SGML
@@ -139,7 +139,7 @@ A single exception is defined as well:
 .. method:: SGMLParser.convert_codepoint(codepoint)
 
    Convert a code point to a :class:`str` value.  Encodings can be handled here if
-   appropriate, though the rest of :mod:`sgmllib` is oblivious on this matter.
+   appropriate, though the rest of :mod:`feedparser_sgmllib` is oblivious on this matter.
 
 
 .. method:: SGMLParser.handle_entityref(ref)
