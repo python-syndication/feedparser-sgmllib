@@ -1,0 +1,4 @@
+Changed
+-------
+
+*   Include documentation, tests and auxiliary files in the source distribution. (:issue:`12`)
