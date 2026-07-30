@@ -1,7 +1,7 @@
 [project]
 name = "feedparser-sgmllib"
 description = "sgmllib from Python 2.7. For feedparser use only."
-version = "2.0.0"
+version = "2.0.1"
 maintainers = [
     { name = "Kurt McKee", email = "contactme@kurtmckee.org" },
 ]
@@ -74,8 +74,8 @@ enable_error_code = [
 warn_unreachable = true
 
 
-# poetry-core
-# -----------
+# poetry
+# ------
 
 [tool.poetry]
 include = [
@@ -86,6 +86,7 @@ include = [
     { path = "tests/", format = "sdist" },
     { path = "tox.ini", format = "sdist" },
 ]
+
 
 # pytest
 # ------
