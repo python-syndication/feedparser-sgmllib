@@ -65,17 +65,56 @@ class SGMLParser(_markupbase.ParserBase):
     def __init__(self, verbose: bool = False) -> None:
         """Initialize and reset this instance."""
         self.verbose = verbose
+
+        # These variables help guard against quadratic search behavior.
+        # Previously, each call to `.feed()` resulted in string-concatenation
+        # and a regular expression matching from the start of the raw data.
+        # For large unclosed tokens (like `<a href="...`) fed in small chunks,
+        # this could become quadratically expensive.
+        #
+        # This quadratic behavior is addressed by:
+        #
+        # * Gating failing calls to `.goahead()` behind an exponential backoff
+        # * Avoiding string concatenation until it's needed
+        #
+        self._rawdata = ""
+        self._pending: list[str] = []
+        self._pending_content_length = 0
+        self._retry_at = 0
+
         self.reset()
 
     def reset(self) -> None:
         """Reset this instance. Loses all unprocessed data."""
         self.__starttag_text: str | None = None
-        self.rawdata = ""
+        self._rawdata = ""
+        self._pending = []
+        self._pending_content_length = 0
+        self._retry_at = 0
         self.stack: list[str] = []
         self.lasttag = "???"
         self.nomoretags = 0
         self.literal = 0
         super().reset()
+
+    @property
+    def rawdata(self) -> str:
+        self._flush_pending()
+        return self._rawdata
+
+    @rawdata.setter
+    def rawdata(self, value: str) -> None:
+        self._rawdata = value
+        self._pending = []
+        self._pending_content_length = 0
+
+    def _flush_pending(self) -> None:
+        """Merge any chunks queued by `feed()` into `self._rawdata`."""
+
+        if self._pending:
+            self._rawdata += "".join(self._pending)
+            self._pending = []
+            self._pending_content_length = 0
 
     def setnomoretags(self) -> None:
         """Enter literal mode (CDATA) till EOF.
@@ -99,11 +138,20 @@ class SGMLParser(_markupbase.ParserBase):
         all the processing is done by goahead().)
         """
 
-        self.rawdata = self.rawdata + data
+        self._pending.append(data)
+        self._pending_content_length += len(data)
+        if len(self._rawdata) + self._pending_content_length < self._retry_at:
+            # The last attempt to resolve the pending token failed.
+            # Skip re-scanning until enough new data has arrived
+            # to make another attempt worthwhile.
+            return
+        self._flush_pending()
         self.goahead(False)
 
     def close(self) -> None:
         """Handle the remaining data."""
+
+        self._flush_pending()
         self.goahead(True)
 
     def error(self, message: str) -> t.NoReturn:
@@ -113,6 +161,7 @@ class SGMLParser(_markupbase.ParserBase):
     # and data to be processed by a subsequent call.  If 'end' is
     # true, force handling all data as if followed by EOF marker.
     def goahead(self, end: bool) -> None:
+        # Accessing `self.rawdata` flushes pending data.
         rawdata = self.rawdata
         i = 0
         n = len(rawdata)
@@ -225,6 +274,15 @@ class SGMLParser(_markupbase.ParserBase):
             self.handle_data(rawdata[i:n])
             i = n
         self.rawdata = rawdata[i:]
+        if i == 0 and n > 0:
+            # No progress was made this call.
+            # Use exponential back off to set how much new data must arrive
+            # before the next scan retry.
+            # This ensures a persistently-incomplete token costs O(n) overall
+            # instead of O(n**2).
+            self._retry_at = n * 2
+        else:
+            self._retry_at = 0
         # XXX if end: check for empty stack
 
     # Extensions for the DOCTYPE scanner:
