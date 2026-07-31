@@ -511,6 +511,18 @@ def test_endtag_with_trailing_content_still_closes_tag(
     assert cdata_event_collector.stack == []
 
 
+def test_endtag_with_no_valid_tag_name_does_not_close_open_tag(nested_tag_collector):
+    """Verify invalid tag names do not close any open tags."""
+
+    nested_tag_collector.feed("<a>content</123>after")
+
+    assert nested_tag_collector.events == [
+        ("start_a", []),
+        ("unknown_endtag", "123"),
+    ]
+    assert nested_tag_collector.stack == ["a"]
+
+
 # XXX These tests have been disabled by prefixing their names with
 # an underscore.  The first two exercise outstanding bugs in the
 # sgmllib module, and the third exhibits questionable behavior

@@ -361,6 +361,8 @@ class SGMLParser(_markupbase.ParserBase):
 
     # Internal -- finish processing of end tag
     def finish_endtag(self, tag: str) -> None:
+        if (match := tagfind.match(tag)) is not None:
+            tag = match.group(0)
         if not tag:
             found = len(self.stack) - 1
             if found < 0:
