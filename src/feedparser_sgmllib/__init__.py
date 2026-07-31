@@ -376,9 +376,10 @@ class SGMLParser(_markupbase.ParserBase):
                     self.report_unbalanced(tag)
                 return
             found = len(self.stack)
-            for i in range(found):
-                if self.stack[i] == tag:
-                    found = i
+            for i, stack_tag in enumerate(reversed(self.stack)):
+                if stack_tag == tag:
+                    found = len(self.stack) - 1 - i
+                    break
         while len(self.stack) > found:
             tag = self.stack[-1]
             method: t.Callable[[], t.Any] | None = getattr(self, "end_" + tag, None)
