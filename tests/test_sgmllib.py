@@ -455,6 +455,35 @@ def test_attrfind_trailing_dollar_sign():
     assert sgmllib.attrfind.search(text).groups() == ("i", '="true"', '"true"')
 
 
+def test_endtag_closes_innermost_matching_tag(nested_tag_collector):
+    """
+    Regression test: Confirm closing tags close innermost tags.
+
+    For example:
+
+        <a id="1"> <b> <a id="2"></a>
+
+    The </a> must close id=2 only, leaving <b> open.
+    """
+
+    nested_tag_collector.feed('<a id="1"><b></c><a id="2"></a>')
+
+    assert nested_tag_collector.events == [
+        ("start_a", [("id", "1")]),
+        ("start_b", []),
+        ("unknown_endtag", "c"),
+        ("start_a", [("id", "2")]),
+        ("end_a",),
+    ]
+    assert nested_tag_collector.stack == ["a", "b"]
+
+    # The innermost <a> (id=2) should be closed, and <b> should still be open.
+    # Therefore, `end_b` should be called, not `unknown_endtag`.
+    nested_tag_collector.feed("</b>")
+    assert nested_tag_collector.events[-1] == ("end_b",)
+    assert nested_tag_collector.stack == ["a"]
+
+
 # XXX These tests have been disabled by prefixing their names with
 # an underscore.  The first two exercise outstanding bugs in the
 # sgmllib module, and the third exhibits questionable behavior

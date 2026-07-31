@@ -369,23 +369,21 @@ class SGMLParser(_markupbase.ParserBase):
         else:
             if tag not in self.stack:
                 try:
-                    method = getattr(self, "end_" + tag)
+                    getattr(self, "end_" + tag)
                 except AttributeError:
                     self.unknown_endtag(tag)
                 else:
                     self.report_unbalanced(tag)
                 return
             found = len(self.stack)
-            for i in range(found):
-                if self.stack[i] == tag:
-                    found = i
+            for i, stack_tag in enumerate(reversed(self.stack)):
+                if stack_tag == tag:
+                    found = len(self.stack) - 1 - i
+                    break
         while len(self.stack) > found:
             tag = self.stack[-1]
-            try:
-                method = getattr(self, "end_" + tag)
-            except AttributeError:
-                method = None
-            if method:
+            method: t.Callable[[], t.Any] | None = getattr(self, "end_" + tag, None)
+            if method is not None:
                 self.handle_endtag(tag, method)
             else:
                 self.unknown_endtag(tag)
