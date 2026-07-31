@@ -484,6 +484,33 @@ def test_endtag_closes_innermost_matching_tag(nested_tag_collector):
     assert nested_tag_collector.stack == ["a"]
 
 
+@pytest.mark.parametrize(
+    "trailing_text",
+    (
+        " bonus",
+        "/",
+        "=x",
+        ";",
+        ",",
+    ),
+)
+def test_endtag_with_trailing_content_still_closes_tag(
+    cdata_event_collector, trailing_text
+):
+    """Verify that a closing tag with trailing content still closes the tag."""
+
+    cdata_event_collector.check_events(
+        f"<cdata>content</cdata{trailing_text}>after",
+        [
+            ("starttag", "cdata", []),
+            ("data", "content"),
+            ("endtag", "cdata"),
+            ("data", "after"),
+        ],
+    )
+    assert cdata_event_collector.stack == []
+
+
 # XXX These tests have been disabled by prefixing their names with
 # an underscore.  The first two exercise outstanding bugs in the
 # sgmllib module, and the third exhibits questionable behavior
