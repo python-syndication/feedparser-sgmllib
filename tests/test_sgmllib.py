@@ -1,5 +1,6 @@
 import io
 import pathlib
+import time
 
 import pytest
 
@@ -521,6 +522,62 @@ def test_endtag_with_no_valid_tag_name_does_not_close_open_tag(nested_tag_collec
         ("unknown_endtag", "123"),
     ]
     assert nested_tag_collector.stack == ["a"]
+
+
+@pytest.mark.parametrize(
+    "prefix",
+    (
+        pytest.param('<a href="', id="starttag-unterminated-attribute"),
+        pytest.param("</", id="endtag-missing-close-bracket"),
+        pytest.param("<?", id="processing-instruction-missing-close"),
+        pytest.param("<!--", id="comment-missing-close"),
+        pytest.param("<!DOCTYPE ", id="declaration-missing-close"),
+        pytest.param("<![CDATA[", id="marked-section-missing-close"),
+    ),
+)
+def test_feed_unresolved_token_scales_linearly(prefix):
+    """
+    Verify that `.feed()` doesn't exhibit quadratic search behavior.
+
+    This is verified by creating a very large, incomplete token
+    (like an unclosed start tag) and feeding it to the parser
+    one byte at a time. The amount of CPU time required for this
+    suggests whether the parser has redeveloped quadratic behavior.
+
+    The first and last quarters of the data feed times are measured
+    because linear behavior should keep their ratio close to 1.
+    Having two quarters' worth of data between the measured quarters
+    helps make quadratic behavior much more noticeable.
+    """
+
+    n = 60_000
+    length = n - len(prefix)
+    payload = prefix + ("x" * length)
+    parser = sgmllib.SGMLParser()
+
+    quarter = n // 4
+    checkpoints = []
+    start = time.process_time()
+    for i, character in enumerate(payload, start=1):
+        parser.feed(character)
+        # At the end of each content quarter,
+        # capture the processing time and restart the timer.
+        if i % quarter == 0:
+            checkpoints.append(time.process_time() - start)
+            start = time.process_time()
+
+    assert len(checkpoints) == 4
+    first_quarter, last_quarter = checkpoints[0], checkpoints[-1]
+
+    max_allowed_growth = 2.5
+    # The numbers are scaled up to try to avoid close-to-zero float math problems.
+    budget = (first_quarter * 10_000) * max_allowed_growth
+    assert last_quarter * 10_000 <= budget, (
+        f"The cost of the last quarter of feed() calls ({last_quarter:.3f}s) "
+        f"exceeded {max_allowed_growth}x the cost of the first quarter "
+        f"({first_quarter:.3f}s) for prefix {prefix!r}. "
+        f"This suggests quadratic behavior."
+    )
 
 
 # XXX These tests have been disabled by prefixing their names with
