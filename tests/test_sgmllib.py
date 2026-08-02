@@ -1,6 +1,7 @@
 import io
 import pathlib
 import time
+import tracemalloc
 
 import pytest
 
@@ -535,9 +536,9 @@ def test_endtag_with_no_valid_tag_name_does_not_close_open_tag(nested_tag_collec
         pytest.param("<![CDATA[", id="marked-section-missing-close"),
     ),
 )
-def test_feed_unresolved_token_scales_linearly(prefix):
+def test_feed_unresolved_token_scales_cpu_time_linearly(prefix):
     """
-    Verify that `.feed()` doesn't exhibit quadratic search behavior.
+    Verify `.feed()` doesn't exhibit quadratic CPU time usage.
 
     This is verified by creating a very large, incomplete token
     (like an unclosed start tag) and feeding it to the parser
@@ -577,6 +578,66 @@ def test_feed_unresolved_token_scales_linearly(prefix):
         f"exceeded {max_allowed_growth}x the cost of the first quarter "
         f"({first_quarter:.3f}s) for prefix {prefix!r}. "
         f"This suggests quadratic behavior."
+    )
+
+
+def test_feed_unresolved_token_peak_memory_scales_nicely():
+    """
+    Verify `.feed()` doesn't show a big peak memory usage constant multiplier.
+
+    This is verified by creating a very large, incomplete token
+    (like an unclosed start tag) and feeding it to the parser
+    one character at a time.
+
+    In the past, each character was concatenated each time `.feed()` is called.
+    For a large input, peak memory usage was always ~2x the current input size:
+    concatenation copied the existing string in memory to add a single character.
+
+    The initial fix for quadratic CPU usage replaced string concatenation
+    in favor of buffering incoming strings in a list.
+    However, this caused a jump in the peak memory usage constant multiplier:
+    now, in addition to the strings themselves, lots of references to the strings
+    had to be created and stored in the list buffer.
+
+    The solution was to replace the list of strings with something
+    which has a resizeable internal buffer and can store the incoming data
+    without the added cost of maintaining references or concatenating content.
+    """
+
+    # 200,000 should be big enough to dominate memory usage while the test runs
+    # so that peak memory usage is primarily influenced by the input payload
+    # and its final string-concatenation.
+    n = 200_000
+
+    prefix = '<a href="'
+    length = n - len(prefix)
+    payload = prefix + ("x" * length)
+    parser = sgmllib.SGMLParser()
+
+    tracemalloc.start()
+    try:
+        for ch in payload:
+            parser.feed(ch)
+        parser.close()
+        _, peak = tracemalloc.get_traced_memory()
+    finally:
+        tracemalloc.stop()
+
+    # The `max_allowed_ratio` reflects how large peak memory usage can be
+    # when compared to the size of the input payload.
+    # As long as the input payload dominates memory usage while the test runs,
+    # the string concatenation of the `SGMLParser._rawdata`
+    # with the buffered, unparsed data in `._pending` should double peak usage.
+    #
+    # The max allowed ratio is set to 3.0 to allow for other memory use,
+    # but is still lower than what was measured when a list of strings was used
+    # to accumulate unparsed input data.
+    max_allowed_ratio = 3.0
+    budget = n * max_allowed_ratio
+    assert peak <= budget, (
+        f"Peak traced memory ({peak:,} bytes) exceeded "
+        f"{max_allowed_ratio}x the input size ({len(payload):,} bytes) "
+        "while feeding an unresolved token byte-at-a-time."
     )
 
 

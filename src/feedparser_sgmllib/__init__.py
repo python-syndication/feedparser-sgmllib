@@ -13,6 +13,8 @@ import _markupbase
 import re
 import typing as t
 
+from ._compat import StringIO
+
 __all__ = ["SGMLParser", "SGMLParseError"]
 
 # Regular expressions used for parsing
@@ -66,20 +68,25 @@ class SGMLParser(_markupbase.ParserBase):
         """Initialize and reset this instance."""
         self.verbose = verbose
 
-        # These variables help guard against quadratic search behavior.
-        # Previously, each call to `.feed()` resulted in string-concatenation
-        # and a regular expression matching from the start of the raw data.
-        # For large unclosed tokens (like `<a href="...`) fed in small chunks,
-        # this could become quadratically expensive.
+        # These variables help guard against quadratic CPU usage behavior
+        # without significantly increasing memory usage.
         #
-        # This quadratic behavior is addressed by:
+        # Previously, each call to `.feed()` resulted in string-concatenation
+        # and a regular expression matching from the start of the raw data
+        # even though it was known that the existing raw data wouldn't match.
+        # For large unclosed tokens (like `<a href="...`) fed in small chunks,
+        # this became quadratically expensive.
+        #
+        # This quadratic CPU behavior is addressed by:
         #
         # * Gating failing calls to `.goahead()` behind an exponential backoff
         # * Avoiding string concatenation until it's needed
         #
+        # Memory usage is guarded by using an object with a resizeable buffer;
+        # a simple list of strings can increase memory usage significantly.
+        #
         self._rawdata = ""
-        self._pending: list[str] = []
-        self._pending_content_length = 0
+        self._pending = StringIO()
         self._retry_at = 0
 
         self.reset()
@@ -88,8 +95,7 @@ class SGMLParser(_markupbase.ParserBase):
         """Reset this instance. Loses all unprocessed data."""
         self.__starttag_text: str | None = None
         self._rawdata = ""
-        self._pending = []
-        self._pending_content_length = 0
+        self._pending = StringIO()
         self._retry_at = 0
         self.stack: list[str] = []
         self.lasttag = "???"
@@ -105,16 +111,14 @@ class SGMLParser(_markupbase.ParserBase):
     @rawdata.setter
     def rawdata(self, value: str) -> None:
         self._rawdata = value
-        self._pending = []
-        self._pending_content_length = 0
+        self._pending = StringIO()
 
     def _flush_pending(self) -> None:
         """Merge any chunks queued by `feed()` into `self._rawdata`."""
 
-        if self._pending:
-            self._rawdata += "".join(self._pending)
-            self._pending = []
-            self._pending_content_length = 0
+        if self._pending.tell():
+            self._rawdata += self._pending.getvalue()
+            self._pending = StringIO()
 
     def setnomoretags(self) -> None:
         """Enter literal mode (CDATA) till EOF.
@@ -138,9 +142,8 @@ class SGMLParser(_markupbase.ParserBase):
         all the processing is done by goahead().)
         """
 
-        self._pending.append(data)
-        self._pending_content_length += len(data)
-        if len(self._rawdata) + self._pending_content_length < self._retry_at:
+        self._pending.write(data)
+        if len(self._rawdata) + self._pending.tell() < self._retry_at:
             # The last attempt to resolve the pending token failed.
             # Skip re-scanning until enough new data has arrived
             # to make another attempt worthwhile.
