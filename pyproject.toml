@@ -1,7 +1,7 @@
 [project]
 name = "feedparser-sgmllib"
 description = "sgmllib from Python 2.7. For feedparser use only."
-version = "2.0.1"
+version = "2.1.0"
 maintainers = [
     { name = "Kurt McKee", email = "contactme@kurtmckee.org" },
 ]

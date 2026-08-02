@@ -20,6 +20,36 @@ Please see the fragment files in the `changelog.d directory`_.
 
 ..  scriv-insert-here
 
+.. _changelog-2.1.0:
+
+2.1.0 - 2026-08-02
+==================
+
+Fixed
+-----
+
+*   Close tags more correctly, even if the end tag has trailing text.
+
+    For example, ``</tag bonus>`` now closes ``<tag>`` correctly.
+    The trailing content is not available to parsers.
+
+*   Fix quadratic CPU usage in ``SGMLParser.feed()``.
+
+    This can occur when a large document with an unfinished token
+    (like ``<a href="...``) is fed into the parser in very small increments.
+
+    The new implementation doesn't significantly change peak memory usage.
+
+Changed
+-------
+
+*   Improve the closing tag search behavior of ``SGMLParser.finish_endtag()``.
+
+    Previously, the method always searched the entire tag stack
+    to close the innermost tag, which had a higher search cost.
+    The tag stack is now searched in reverse order
+    and breaks on the first matching tag.
+
 .. _changelog-2.0.1:
 
 2.0.1 - 2026-07-30
