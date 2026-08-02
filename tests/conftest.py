@@ -128,3 +128,29 @@ class HTMLEntityCollector(EventCollector):
     def handle_entityref(self, name):
         self.events.append(("entityref", name))
         sgmllib.SGMLParser.handle_entityref(self, name)
+
+
+class NestedTagCollector(sgmllib.SGMLParser):
+    def __init__(self) -> None:
+        super().__init__()
+        self.events = []
+
+    def start_a(self, attrs):
+        self.events.append(("start_a", attrs))
+
+    def end_a(self):
+        self.events.append(("end_a",))
+
+    def start_b(self, attrs):
+        self.events.append(("start_b", attrs))
+
+    def end_b(self):
+        self.events.append(("end_b",))
+
+    def unknown_endtag(self, tag):
+        self.events.append(("unknown_endtag", tag))
+
+
+@pytest.fixture
+def nested_tag_collector() -> NestedTagCollector:
+    return NestedTagCollector()

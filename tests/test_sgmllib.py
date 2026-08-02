@@ -1,5 +1,7 @@
 import io
 import pathlib
+import time
+import tracemalloc
 
 import pytest
 
@@ -453,6 +455,190 @@ def test_attrfind_trailing_dollar_sign():
     text = 'i$="true"'
     assert sgmllib.attrfind.match(text).groups() == ("i", '="true"', '"true"')
     assert sgmllib.attrfind.search(text).groups() == ("i", '="true"', '"true"')
+
+
+def test_endtag_closes_innermost_matching_tag(nested_tag_collector):
+    """
+    Regression test: Confirm closing tags close innermost tags.
+
+    For example:
+
+        <a id="1"> <b> <a id="2"></a>
+
+    The </a> must close id=2 only, leaving <b> open.
+    """
+
+    nested_tag_collector.feed('<a id="1"><b></c><a id="2"></a>')
+
+    assert nested_tag_collector.events == [
+        ("start_a", [("id", "1")]),
+        ("start_b", []),
+        ("unknown_endtag", "c"),
+        ("start_a", [("id", "2")]),
+        ("end_a",),
+    ]
+    assert nested_tag_collector.stack == ["a", "b"]
+
+    # The innermost <a> (id=2) should be closed, and <b> should still be open.
+    # Therefore, `end_b` should be called, not `unknown_endtag`.
+    nested_tag_collector.feed("</b>")
+    assert nested_tag_collector.events[-1] == ("end_b",)
+    assert nested_tag_collector.stack == ["a"]
+
+
+@pytest.mark.parametrize(
+    "trailing_text",
+    (
+        " bonus",
+        "/",
+        "=x",
+        ";",
+        ",",
+    ),
+)
+def test_endtag_with_trailing_content_still_closes_tag(
+    cdata_event_collector, trailing_text
+):
+    """Verify that a closing tag with trailing content still closes the tag."""
+
+    cdata_event_collector.check_events(
+        f"<cdata>content</cdata{trailing_text}>after",
+        [
+            ("starttag", "cdata", []),
+            ("data", "content"),
+            ("endtag", "cdata"),
+            ("data", "after"),
+        ],
+    )
+    assert cdata_event_collector.stack == []
+
+
+def test_endtag_with_no_valid_tag_name_does_not_close_open_tag(nested_tag_collector):
+    """Verify invalid tag names do not close any open tags."""
+
+    nested_tag_collector.feed("<a>content</123>after")
+
+    assert nested_tag_collector.events == [
+        ("start_a", []),
+        ("unknown_endtag", "123"),
+    ]
+    assert nested_tag_collector.stack == ["a"]
+
+
+@pytest.mark.parametrize(
+    "prefix",
+    (
+        pytest.param('<a href="', id="starttag-unterminated-attribute"),
+        pytest.param("</", id="endtag-missing-close-bracket"),
+        pytest.param("<?", id="processing-instruction-missing-close"),
+        pytest.param("<!--", id="comment-missing-close"),
+        pytest.param("<!DOCTYPE ", id="declaration-missing-close"),
+        pytest.param("<![CDATA[", id="marked-section-missing-close"),
+    ),
+)
+def test_feed_unresolved_token_scales_cpu_time_linearly(prefix):
+    """
+    Verify `.feed()` doesn't exhibit quadratic CPU time usage.
+
+    This is verified by creating a very large, incomplete token
+    (like an unclosed start tag) and feeding it to the parser
+    one byte at a time. The amount of CPU time required for this
+    suggests whether the parser has redeveloped quadratic behavior.
+
+    The first and last quarters of the data feed times are measured
+    because linear behavior should keep their ratio close to 1.
+    Having two quarters' worth of data between the measured quarters
+    helps make quadratic behavior much more noticeable.
+    """
+
+    n = 60_000
+    length = n - len(prefix)
+    payload = prefix + ("x" * length)
+    parser = sgmllib.SGMLParser()
+
+    quarter = n // 4
+    checkpoints = []
+    start = time.process_time()
+    for i, character in enumerate(payload, start=1):
+        parser.feed(character)
+        # At the end of each content quarter,
+        # capture the processing time and restart the timer.
+        if i % quarter == 0:
+            checkpoints.append(time.process_time() - start)
+            start = time.process_time()
+
+    assert len(checkpoints) == 4
+    first_quarter, last_quarter = checkpoints[0], checkpoints[-1]
+
+    max_allowed_growth = 2.5
+    # The numbers are scaled up to try to avoid close-to-zero float math problems.
+    budget = (first_quarter * 10_000) * max_allowed_growth
+    assert last_quarter * 10_000 <= budget, (
+        f"The cost of the last quarter of feed() calls ({last_quarter:.3f}s) "
+        f"exceeded {max_allowed_growth}x the cost of the first quarter "
+        f"({first_quarter:.3f}s) for prefix {prefix!r}. "
+        f"This suggests quadratic behavior."
+    )
+
+
+def test_feed_unresolved_token_peak_memory_scales_nicely():
+    """
+    Verify `.feed()` doesn't show a big peak memory usage constant multiplier.
+
+    This is verified by creating a very large, incomplete token
+    (like an unclosed start tag) and feeding it to the parser
+    one character at a time.
+
+    In the past, each character was concatenated each time `.feed()` is called.
+    For a large input, peak memory usage was always ~2x the current input size:
+    concatenation copied the existing string in memory to add a single character.
+
+    The initial fix for quadratic CPU usage replaced string concatenation
+    in favor of buffering incoming strings in a list.
+    However, this caused a jump in the peak memory usage constant multiplier:
+    now, in addition to the strings themselves, lots of references to the strings
+    had to be created and stored in the list buffer.
+
+    The solution was to replace the list of strings with something
+    which has a resizeable internal buffer and can store the incoming data
+    without the added cost of maintaining references or concatenating content.
+    """
+
+    # 200,000 should be big enough to dominate memory usage while the test runs
+    # so that peak memory usage is primarily influenced by the input payload
+    # and its final string-concatenation.
+    n = 200_000
+
+    prefix = '<a href="'
+    length = n - len(prefix)
+    payload = prefix + ("x" * length)
+    parser = sgmllib.SGMLParser()
+
+    tracemalloc.start()
+    try:
+        for ch in payload:
+            parser.feed(ch)
+        parser.close()
+        _, peak = tracemalloc.get_traced_memory()
+    finally:
+        tracemalloc.stop()
+
+    # The `max_allowed_ratio` reflects how large peak memory usage can be
+    # when compared to the size of the input payload.
+    # As long as the input payload dominates memory usage while the test runs,
+    # the string concatenation of the `SGMLParser._rawdata`
+    # with the buffered, unparsed data in `._pending` should double peak usage.
+    #
+    # The max allowed ratio is set to 3.0 to allow for other memory use,
+    # but is still lower than what was measured when a list of strings was used
+    # to accumulate unparsed input data.
+    max_allowed_ratio = 3.0
+    budget = n * max_allowed_ratio
+    assert peak <= budget, (
+        f"Peak traced memory ({peak:,} bytes) exceeded "
+        f"{max_allowed_ratio}x the input size ({len(payload):,} bytes) "
+        "while feeding an unresolved token byte-at-a-time."
+    )
 
 
 # XXX These tests have been disabled by prefixing their names with

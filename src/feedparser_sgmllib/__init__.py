@@ -13,6 +13,8 @@ import _markupbase
 import re
 import typing as t
 
+from ._compat import StringIO
+
 __all__ = ["SGMLParser", "SGMLParseError"]
 
 # Regular expressions used for parsing
@@ -65,17 +67,58 @@ class SGMLParser(_markupbase.ParserBase):
     def __init__(self, verbose: bool = False) -> None:
         """Initialize and reset this instance."""
         self.verbose = verbose
+
+        # These variables help guard against quadratic CPU usage behavior
+        # without significantly increasing memory usage.
+        #
+        # Previously, each call to `.feed()` resulted in string-concatenation
+        # and a regular expression matching from the start of the raw data
+        # even though it was known that the existing raw data wouldn't match.
+        # For large unclosed tokens (like `<a href="...`) fed in small chunks,
+        # this became quadratically expensive.
+        #
+        # This quadratic CPU behavior is addressed by:
+        #
+        # * Gating failing calls to `.goahead()` behind an exponential backoff
+        # * Avoiding string concatenation until it's needed
+        #
+        # Memory usage is guarded by using an object with a resizeable buffer;
+        # a simple list of strings can increase memory usage significantly.
+        #
+        self._rawdata = ""
+        self._pending = StringIO()
+        self._retry_at = 0
+
         self.reset()
 
     def reset(self) -> None:
         """Reset this instance. Loses all unprocessed data."""
         self.__starttag_text: str | None = None
-        self.rawdata = ""
+        self._rawdata = ""
+        self._pending = StringIO()
+        self._retry_at = 0
         self.stack: list[str] = []
         self.lasttag = "???"
         self.nomoretags = 0
         self.literal = 0
         super().reset()
+
+    @property
+    def rawdata(self) -> str:
+        self._flush_pending()
+        return self._rawdata
+
+    @rawdata.setter
+    def rawdata(self, value: str) -> None:
+        self._rawdata = value
+        self._pending = StringIO()
+
+    def _flush_pending(self) -> None:
+        """Merge any chunks queued by `feed()` into `self._rawdata`."""
+
+        if self._pending.tell():
+            self._rawdata += self._pending.getvalue()
+            self._pending = StringIO()
 
     def setnomoretags(self) -> None:
         """Enter literal mode (CDATA) till EOF.
@@ -99,11 +142,19 @@ class SGMLParser(_markupbase.ParserBase):
         all the processing is done by goahead().)
         """
 
-        self.rawdata = self.rawdata + data
+        self._pending.write(data)
+        if len(self._rawdata) + self._pending.tell() < self._retry_at:
+            # The last attempt to resolve the pending token failed.
+            # Skip re-scanning until enough new data has arrived
+            # to make another attempt worthwhile.
+            return
+        self._flush_pending()
         self.goahead(False)
 
     def close(self) -> None:
         """Handle the remaining data."""
+
+        self._flush_pending()
         self.goahead(True)
 
     def error(self, message: str) -> t.NoReturn:
@@ -113,6 +164,7 @@ class SGMLParser(_markupbase.ParserBase):
     # and data to be processed by a subsequent call.  If 'end' is
     # true, force handling all data as if followed by EOF marker.
     def goahead(self, end: bool) -> None:
+        # Accessing `self.rawdata` flushes pending data.
         rawdata = self.rawdata
         i = 0
         n = len(rawdata)
@@ -225,6 +277,15 @@ class SGMLParser(_markupbase.ParserBase):
             self.handle_data(rawdata[i:n])
             i = n
         self.rawdata = rawdata[i:]
+        if i == 0 and n > 0:
+            # No progress was made this call.
+            # Use exponential back off to set how much new data must arrive
+            # before the next scan retry.
+            # This ensures a persistently-incomplete token costs O(n) overall
+            # instead of O(n**2).
+            self._retry_at = n * 2
+        else:
+            self._retry_at = 0
         # XXX if end: check for empty stack
 
     # Extensions for the DOCTYPE scanner:
@@ -361,6 +422,8 @@ class SGMLParser(_markupbase.ParserBase):
 
     # Internal -- finish processing of end tag
     def finish_endtag(self, tag: str) -> None:
+        if (match := tagfind.match(tag)) is not None:
+            tag = match.group(0)
         if not tag:
             found = len(self.stack) - 1
             if found < 0:
@@ -369,23 +432,21 @@ class SGMLParser(_markupbase.ParserBase):
         else:
             if tag not in self.stack:
                 try:
-                    method = getattr(self, "end_" + tag)
+                    getattr(self, "end_" + tag)
                 except AttributeError:
                     self.unknown_endtag(tag)
                 else:
                     self.report_unbalanced(tag)
                 return
             found = len(self.stack)
-            for i in range(found):
-                if self.stack[i] == tag:
-                    found = i
+            for i, stack_tag in enumerate(reversed(self.stack)):
+                if stack_tag == tag:
+                    found = len(self.stack) - 1 - i
+                    break
         while len(self.stack) > found:
             tag = self.stack[-1]
-            try:
-                method = getattr(self, "end_" + tag)
-            except AttributeError:
-                method = None
-            if method:
+            method: t.Callable[[], t.Any] | None = getattr(self, "end_" + tag, None)
+            if method is not None:
                 self.handle_endtag(tag, method)
             else:
                 self.unknown_endtag(tag)
